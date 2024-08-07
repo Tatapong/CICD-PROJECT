@@ -1,13 +1,38 @@
-/* Reset default browser styles */
-body, h1, h2, p {
+/* Reset default margin and padding */
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f8f8f8;
+    color: #333;
+}
+
+header {
+    background-color: #333;
+    color: #fff;
+    padding: 10px 20px;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+}
+
+nav ul li {
+    margin: 0 10px;
 }
 
 .hero {
-    background-color: #f0f0f0;
+    background-image: url('hero-background.jpg');
+    background-size: cover;
+    color: #fff;
     text-align: center;
-    padding: 50px 0;
+    padding: 100px 0;
 }
 
 .hero-content {
@@ -15,31 +40,59 @@ body, h1, h2, p {
     margin: 0 auto;
 }
 
-.service-section {
-    padding: 20px 0;
-    background-color: #eaeaea;
-    text-align: center;
+.hero h1 {
+    font-size: 3em;
+    margin-bottom: 20px;
 }
 
-.testimonials {
-    margin-top: 20px;
+.hero p {
+    font-size: 1.5em;
+    margin-bottom: 30px;
 }
 
 .cta {
-    background-color: #007bff;
+    background-color: #ff9900;
     color: #fff;
     padding: 10px 20px;
+    font-size: 1.2em;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    margin-top: 20px;
 }
 
-.cta:hover {
-    background-color: #0056b3;
+.service-section {
+    padding: 50px 0;
+    background-color: #f9f9f9;
+    text-align: center;
 }
 
-.footer {
+.service-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.testimonials {
+    background-color: #fff;
+    background-image: url('testimonials-background.jpg');
+    background-size: cover;
+    padding: 50px 0;
+    text-align: center;
+    color: #333;
+}
+
+.testimonial-carousel {
+    display: flex;
+    justify-content: center;
+}
+
+.cta-section {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 20px 0;
+}
+
+footer {
     background-color: #333;
     color: #fff;
     padding: 20px 0;
@@ -50,8 +103,12 @@ body, h1, h2, p {
     margin-bottom: 20px;
 }
 
-a {
+.contact-info p {
+    margin-bottom: 10px;
+}
+
+.quick-links a, .social-links a {
     color: #fff;
-    text-decoration: none;
     margin: 0 10px;
+    text-decoration: none;
 }
