@@ -13,6 +13,10 @@ resource "aws_vpc" "eks_vpc" {
 }
 
 # Define the subnets
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 resource "aws_subnet" "eks_public_subnets" {
   count                   = 2
   vpc_id                  = aws_vpc.eks_vpc.id
