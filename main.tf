@@ -109,8 +109,7 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
 
 # Create the IAM role for the EKS worker nodes
 resource "aws_iam_role" "eks_worker_role" {
-  name = "eks-worker```hcl
-role"
+  name = "eks-worker-role"
 
   assume_role_policy = jsonencode({
     Version   = "2012-10-17",
