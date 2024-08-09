@@ -121,6 +121,47 @@ resource "aws_iam_role_policy_attachment" "ec2_container_registry_read_only" {
   role       = aws_iam_role.eks_worker_role.name
 }
 
+# Define the IAM policy for the EKS worker IAM role
+resource "aws_iam_policy" "eks_worker_role_policy" {
+  name        = "eks-worker-role-policy"
+  description = "IAM policy for EKS worker role"
+  policy      = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "ec2:CreateTags",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:TerminateInstances",
+        "ec2:AssociateRouteTable",
+        "ec2:AttachInternetGateway",
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:CreateRoute",
+        "ec2:DeleteRoute",
+        "ec2:DisassociateRouteTable",
+        "ec2:CreateVpcEndpoint",
+        "ec2:DeleteVpcEndpoints",
+        "ec2:ModifyVpcEndpoint",
+        "ec2:AttachNetworkInterface",
+        "ec2:DetachNetworkInterface",
+        "ec2:AssignIpv6Addresses",
+        "ec2:UnassignIpv6Addresses"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
 # Attach the new IAM policy to the EKS worker IAM role
 resource "aws_iam_role_policy_attachment" "attach_eks_worker_role_policy" {
   role       = aws_iam_role.eks_worker_role.name
