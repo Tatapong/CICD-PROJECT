@@ -13,9 +13,7 @@ resource "aws_vpc" "eks_vpc" {
 }
 
 # Define the subnets
-data "aws_availability_zones" "available" {
-  state = "available"
-}
+data "aws_availability_zones" "available" {}
 
 resource "aws_subnet" "eks_public_subnets" {
   count                   = 2
@@ -31,7 +29,6 @@ resource "aws_subnet" "eks_public_subnets" {
   }
 }
 
-# Define the worker node subnets
 resource "aws_subnet" "eks_worker_subnets" {
   count                   = 2
   vpc_id                  = aws_vpc.eks_vpc.id
@@ -85,23 +82,21 @@ resource "aws_eks_node_group" "my_eks_node_group" {
 resource "aws_iam_role" "eks_cluster_role" {
   name = "eks-cluster-role"
 
-  assume_role_policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "eks.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-POLICY
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = {
+          Service = "eks.amazonaws.com"
+        },
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
 }
 
-# Attach the required policies to the EKS cluster IAM role
+# Attach policies to the EKS cluster IAM role
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.eks_cluster_role.name
@@ -114,25 +109,24 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
 
 # Create the IAM role for the EKS worker nodes
 resource "aws_iam_role" "eks_worker_role" {
-  name = "eks-worker-role"
+  name = "eks-worker```hcl
+role"
 
-  assume_role_policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-POLICY
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
 }
 
-# Attach the required policies to the EKS worker node IAM role
+# Attach policies to the EKS worker IAM role
 resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
   role       = aws_iam_role.eks_worker_role.name
