@@ -58,26 +58,6 @@ resource "aws_eks_cluster" "my_eks_cluster" {
   ]
 }
 
-# Define the EKS node group
-resource "aws_eks_node_group" "my_eks_node_group" {
-  cluster_name    = aws_eks_cluster.my_eks_cluster.name
-  node_group_name = "my-eks-node-group"
-  node_role_arn    = aws_iam_role.eks_worker_role.arn
-  subnet_ids       = aws_subnet.eks_worker_subnets[*].id
-
-  scaling_config {
-    desired_size = 2
-    max_size     = 3
-    min_size     = 1
-  }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_worker_node_policy,
-    aws_iam_role_policy_attachment.eks_cni_policy,
-    aws_iam_role_policy_attachment.ec2_container_registry_read_only,
-  ]
-}
-
 # Create the IAM role for the EKS cluster
 resource "aws_iam_role" "eks_cluster_role" {
   name = "eks-cluster-role"
@@ -139,4 +119,31 @@ resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
 resource "aws_iam_role_policy_attachment" "ec2_container_registry_read_only" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   role       = aws_iam_role.eks_worker_role.name
+}
+
+# Attach the new IAM policy to the EKS worker IAM role
+resource "aws_iam_role_policy_attachment" "attach_eks_worker_role_policy" {
+  role       = aws_iam_role.eks_worker_role.name
+  policy_arn = aws_iam_policy.eks_worker_role_policy.arn
+}
+
+# Define the EKS node group
+resource "aws_eks_node_group" "my_eks_node_group" {
+  cluster_name    = aws_eks_cluster.my_eks_cluster.name
+  node_group_name = "my-eks-node-group"
+  node_role_arn   = aws_iam_role.eks_worker_role.arn
+  subnet_ids      = aws_subnet.eks_worker_subnets[*].id
+
+  scaling_config {
+    desired_size = 2
+    max_size     = 3
+    min_size     = 1
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.ec2_container_registry_read_only,
+    aws_iam_role_policy_attachment.attach_eks_worker_role_policy
+  ]
 }
