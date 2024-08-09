@@ -3,13 +3,37 @@ provider "aws" {
   region = "us-west-2"
 }
 
-# Create the EKS cluster
+# Define the VPC
+resource "aws_vpc" "eks_vpc" {
+  cidr_block = "10.0.0.0/16"
+
+  tags = {
+    "Name" = "EKS VPC"
+  }
+}
+
+# Define the subnets
+resource "aws_subnet" "eks_public_subnets" {
+  count                   = 2
+  vpc_id                  = aws_vpc.eks_vpc.id
+  cidr_block              = "10.0.${count.index}.0/24"
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    "Name"                            = "EKS Public Subnet ${count.index + 1}"
+    "kubernetes.io/role/elb"          = "1"
+    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+  }
+}
+
+# Define the EKS cluster
 resource "aws_eks_cluster" "my_eks_cluster" {
   name     = "my-eks-cluster"
   role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
-    subnet_ids = ["subnet-08600496c79d1a371", "subnet-03bc850a1e94262b3", "subnet-02e6fef67926c7d27"] # Replace with your subnet IDs
+    subnet_ids = aws_subnet.eks_public_subnets[*].id
   }
 
   depends_on = [
