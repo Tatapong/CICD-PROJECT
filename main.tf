@@ -1,149 +1,91 @@
-# Provider configuration
 provider "aws" {
-  region = "us-west-2"
+  region = local.region
 }
 
-# Define the VPC
-resource "aws_vpc" "eks_vpc" {
-  cidr_block = "10.0.0.0/16"
+locals {
+  name   = "jenkins-pipeline"
+  region = "us-east-1"
+
+  vpc_cidr = "10.123.0.0/16"
+  azs      = ["us-east-1a", "us-east-1b"]
+
+  public_subnets  = ["10.123.1.0/24", "10.123.2.0/24"]
+  private_subnets = ["10.123.3.0/24", "10.123.4.0/24"]
+  intra_subnets   = ["10.123.5.0/24", "10.123.6.0/24"]
 
   tags = {
-    "Name" = "EKS VPC"
+    Example = local.name
   }
 }
 
-# Define the subnets
-data "aws_availability_zones" "available" {}
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 4.0"
 
-resource "aws_subnet" "eks_public_subnets" {
-  count                   = 2
-  vpc_id                  = aws_vpc.eks_vpc.id
-  cidr_block              = "10.0.${count.index}.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
+  name = local.name
+  cidr = local.vpc_cidr
 
-  tags = {
-    "Name"                            = "EKS Public Subnet ${count.index + 1}"
-    "kubernetes.io/role/elb"          = "1"
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+  azs             = local.azs
+  private_subnets = local.private_subnets
+  public_subnets  = local.public_subnets
+  intra_subnets   = local.intra_subnets
+
+  enable_nat_gateway = true
+
+  public_subnet_tags = {
+    "kubernetes.io/role/elb" = 1
+  }
+
+  private_subnet_tags = {
+    "kubernetes.io/role/internal-elb" = 1
   }
 }
 
-resource "aws_subnet" "eks_worker_subnets" {
-  count                   = 2
-  vpc_id                  = aws_vpc.eks_vpc.id
-  cidr_block              = "10.0.${count.index + 2}.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = false
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "19.15.1"
 
-  tags = {
-    "Name"                            = "EKS Worker Subnet ${count.index + 1}"
-    "kubernetes.io/role/internal-elb" = "1"
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
-  }
-}
+  cluster_name                   = local.name
+  cluster_endpoint_public_access = true
 
-# Define the EKS cluster
-resource "aws_eks_cluster" "my_eks_cluster" {
-  name     = "my-eks-cluster"
-  role_arn = aws_iam_role.eks_cluster_role.arn
-
-  vpc_config {
-    subnet_ids = concat(aws_subnet.eks_public_subnets[*].id, aws_subnet.eks_worker_subnets[*].id)
+  cluster_addons = {
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
+      most_recent = true
+    }
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_cluster_policy,
-    aws_iam_role_policy_attachment.eks_service_policy,
-  ]
-}
+  vpc_id                   = module.vpc.vpc_id
+  subnet_ids               = module.vpc.private_subnets
+  control_plane_subnet_ids = module.vpc.intra_subnets
 
-# Create the IAM role for the EKS cluster
-resource "aws_iam_role" "eks_cluster_role" {
-  name = "eks-cluster-role"
+  # EKS Managed Node Group(s)
+  eks_managed_node_group_defaults = {
+    ami_type       = "AL2_x86_64"
+    instance_types = ["t3.medium"]
 
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-        Action    = "sts:AssumeRole"
+    attach_cluster_primary_security_group = true
+  }
+
+  eks_managed_node_groups = {
+    ascode-cluster-wg = {
+      min_size     = 1
+      max_size     = 2
+      desired_size = 1
+
+      instance_types = ["t3.medium"]
+      capacity_type  = "SPOT"
+
+      tags = {
+        ExtraTag = "helloworld"
       }
-    ]
-  })
-}
-
-# Attach policies to the EKS cluster IAM role
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.eks_cluster_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_service_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
-  role       = aws_iam_role.eks_cluster_role.name
-}
-
-# Create the IAM role for the EKS worker nodes
-resource "aws_iam_role" "eks_worker_role" {
-  name = "eks-worker-role"
-
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Action    = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-# Attach policies to the EKS worker IAM role
-resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.eks_worker_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.eks_worker_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "ec2_container_registry_read_only" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  role       = aws_iam_role.eks_worker_role.name
-}
-
-# Attach the new IAM policy to the EKS worker IAM role
-resource "aws_iam_role_policy_attachment" "attach_eks_worker_role_policy" {
-  role       = aws_iam_role.eks_worker_role.name
-  policy_arn = aws_iam_policy.eks_worker_role_policy.arn
-}
-
-# Define the EKS node group
-resource "aws_eks_node_group" "my_eks_node_group" {
-  cluster_name    = aws_eks_cluster.my_eks_cluster.name
-  node_group_name = "my-eks-node-group"
-  node_role_arn   = aws_iam_role.eks_worker_role.arn
-  subnet_ids      = aws_subnet.eks_worker_subnets[*].id
-
-  scaling_config {
-    desired_size = 2
-    max_size     = 3
-    min_size     = 1
+    }
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_worker_node_policy,
-    aws_iam_role_policy_attachment.eks_cni_policy,
-    aws_iam_role_policy_attachment.ec2_container_registry_read_only,
-    aws_iam_role_policy_attachment.attach_eks_worker_role_policy
-  ]
+  tags = local.tags
 }
